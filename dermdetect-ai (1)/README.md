@@ -3,15 +3,15 @@
 ## Runs on: 
 https://dermdetect-ai-918130002834.us-west1.run.app
 
-DermDetect AI is an AI-powered dermatology assistant built using **React**, **Flask**, **TensorFlow**, and **Google Cloud Run**.  
+DermDetect AI is an AI-powered dermatology assistant built using **React**,  **TensorFlow**, and **Google Cloud Run**.  
 It enables clinicians to analyze skin lesion images, compare progression across visits, and generate medical-style reports with heatmaps.
 
 Built during the **TensorFlow User Group (TFUG) Prayagraj Hackathon** using:
-- **Gemini AI / AI Studio**
+- **Gemini API/Gemini CLI**
 - **Google Cloud**
 - **Flask Backend**
 - **React Frontend**
-- **TensorFlow Models**
+
 
 ---
 
@@ -34,7 +34,6 @@ DermDetect AI provides:
 ### 🔍 Skin Lesion Classification
 - Built on TensorFlow (EfficientNet/MobileNet)
 - Predicts class + confidence
-- Generates Grad-CAM heatmaps
 - Returns structured clinical-style results
 
 ### 🆚 Lesion Comparison Engine
@@ -67,7 +66,6 @@ DermDetect AI provides:
 - AI report includes:
   - diagnosis  
   - confidence  
-  - heatmap  
   - comparison summary  
   - progression insights  
 
