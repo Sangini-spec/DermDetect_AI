@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DermDetect AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              background: '#f7f9fc',
+              surface: '#ffffff',
+              primary: {
+                DEFAULT: '#4A90E2',
+                hover: '#357ABD',
+                light: '#EAF2FA',
+              },
+              secondary: {
+                DEFAULT: '#6EE7B7',
+                light: '#ECFDF5',
+                text: '#065F46',
+                'text-dark': '#064E3B',
+              },
+              text: {
+                primary: '#111827',
+                secondary: '#6B7280',
+              },
+              border: '#e2e8f0', // slate-200
+              success: {
+                DEFAULT: '#10B981', // emerald-500
+                light: '#E7F8F2',
+                text: '#06764F',
+              },
+              warning: {
+                DEFAULT: '#F59E0B', // amber-500
+                light: '#FFF8E6',
+                text: '#9A6200',
+              },
+              danger: {
+                DEFAULT: '#EF4444', // red-500
+                light: '#FEF2F2',
+                text: '#B91C1C',
+              },
+            },
+            borderRadius: {
+              'xl': '0.75rem',
+              '2xl': '1rem',
+              '3xl': '1.5rem',
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-in-out',
+              'slide-up': 'slideUp 0.5s ease-in-out',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: 0 },
+                '100%': { opacity: 1 },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(20px)', opacity: 0 },
+                '100%': { transform: 'translateY(0)', opacity: 1 },
+              },
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0"
+  }
+}
+</script>
+<style>
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+</style>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="h-full bg-background text-text-primary">
+    <div id="root" class="h-full"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
