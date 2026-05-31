@@ -15,6 +15,7 @@ export interface LesionImage {
   boundingBox?: { x1: number; y1: number; x2: number; y2: number } | null;
   pins?: Array<{ id: string; x: number; y: number; label: string }>;
   practitionerNotes?: string;
+  patientNotes?: string;
 }
 
 export interface PatientMessage {

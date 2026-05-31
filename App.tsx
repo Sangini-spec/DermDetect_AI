@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Header } from './components/Header';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Clock, Brain } from 'lucide-react';
 import { ImageUploader } from './components/ImageUploader';
 import { ResultCard } from './components/ResultCard';
 import { Spinner } from './components/Spinner';
@@ -431,8 +431,47 @@ const AnnotationPreview: React.FC<{ image: LesionImage }> = ({ image }) => {
   );
 };
 
-const AnalysisDetailModal: React.FC<{ image: LesionImage, onClose: () => void }> = ({ image, onClose }) => {
-    if (!image.analysisResult) return null;
+const AnalysisDetailModal: React.FC<{ 
+  image: LesionImage, 
+  onClose: () => void,
+  role?: 'practitioner' | 'patient',
+  patient?: Patient,
+  onUpdatePatient?: (updated: Patient) => void
+}> = ({ image, onClose, role = 'practitioner', patient, onUpdatePatient }) => {
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanError, setScanError] = useState<string | null>(null);
+    const [, setTriggerUpdate] = useState(0);
+
+    const handleRunAIScan = async () => {
+        setIsScanning(true);
+        setScanError(null);
+        try {
+            // Run clinician-only AI analysis
+            const result = await analyzeSkinCondition(
+                image.imageDataUrl,
+                image.boundingBox,
+                image.pins,
+                image.practitionerNotes
+            );
+
+            // Populate the result immediately on the image model
+            image.analysisResult = result;
+
+            if (patient && onUpdatePatient) {
+                const updatedImages = patient.lesionImages.map(img => img.id === image.id ? { ...image, analysisResult: result } : img);
+                onUpdatePatient({
+                    ...patient,
+                    lesionImages: updatedImages
+                });
+            }
+            // Trigger local re-render to update the view instantly
+            setTriggerUpdate(prev => prev + 1);
+        } catch (err: any) {
+            setScanError(err.message || 'Dermoscopic scan evaluation failed. Please verify API configurations.');
+        } finally {
+            setIsScanning(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in p-4">
@@ -445,7 +484,7 @@ const AnalysisDetailModal: React.FC<{ image: LesionImage, onClose: () => void }>
                     <div className="flex flex-col">
                         <AnnotationPreview image={image} />
                         <p className="text-center text-xs text-text-secondary dark:text-slate-400 mt-2.5 font-mono">
-                          Scan taken on: {image.timestamp.toLocaleString()}
+                          Scan date: {image.timestamp.toLocaleString()}
                         </p>
                         
                         {image.pins && image.pins.length > 0 && (
@@ -462,6 +501,13 @@ const AnalysisDetailModal: React.FC<{ image: LesionImage, onClose: () => void }>
                           </div>
                         )}
 
+                        {image.patientNotes && (
+                          <div className="w-full mt-3 p-3.5 bg-amber-500/5 dark:bg-amber-400/5 rounded-xl border border-amber-500/10 text-left animate-fade-in">
+                            <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider font-mono mb-1">Patient Comments:</h4>
+                            <p className="text-xs text-text-primary dark:text-slate-200 mt-1 italic">&ldquo;{image.patientNotes}&rdquo;</p>
+                          </div>
+                        )}
+
                         {image.practitionerNotes && (
                           <div className="w-full mt-3 p-3.5 bg-indigo-50/50 dark:bg-indigo-950/15 rounded-xl border border-indigo-100/50 dark:border-indigo-900/30 text-left">
                             <h4 className="text-xs font-bold text-indigo-650 dark:text-indigo-400 uppercase tracking-wider font-mono mb-1">Clinic Annotation Notes:</h4>
@@ -470,7 +516,58 @@ const AnalysisDetailModal: React.FC<{ image: LesionImage, onClose: () => void }>
                         )}
                     </div>
                     <div>
-                        <ResultCard result={image.analysisResult} />
+                        {image.analysisResult ? (
+                          <ResultCard result={image.analysisResult} />
+                        ) : (
+                          <div className="bg-[#fafbfc] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center space-y-6">
+                            <div className="mx-auto h-14 w-14 rounded-full bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center">
+                              <Brain className="h-7 w-7 animate-pulse" />
+                            </div>
+                            <div className="space-y-2">
+                              <h3 className="font-extrabold text-lg text-text-primary dark:text-white">AI Diagnostic Scan Pending</h3>
+                              <p className="text-sm text-text-secondary dark:text-slate-400">
+                                This lesion image was uploaded directly by the patient and has not yet been processed.
+                              </p>
+                              {role === 'practitioner' ? (
+                                <p className="text-xs text-text-secondary dark:text-slate-400/80 leading-relaxed max-w-sm mx-auto">
+                                  As a clinical practitioner, you can trigger a high-precision AI dermoscopic tissue evaluation for clinical reference.
+                                </p>
+                              ) : (
+                                <p className="text-xs text-text-secondary dark:text-slate-400/80 leading-relaxed max-w-sm mx-auto">
+                                  Your doctor will review this image and activate the specialized AI clinical analysis suite during your consultation.
+                                </p>
+                              )}
+                            </div>
+                            
+                            {role === 'practitioner' && (
+                              <div className="pt-2">
+                                <button
+                                  onClick={handleRunAIScan}
+                                  disabled={isScanning}
+                                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 border border-transparent font-bold rounded-xl shadow-lg shadow-indigo-500/20 text-white bg-indigo-650 hover:bg-indigo-700 transition-all disabled:opacity-50 cursor-pointer"
+                                >
+                                  {isScanning ? (
+                                    <>
+                                      <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                                      Evaluating vectors...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Brain className="h-4 w-4" />
+                                      Start Clinical AI Scan
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+
+                            {scanError && (
+                              <div className="p-4 text-xs font-semibold rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-center">
+                                {scanError}
+                              </div>
+                            )}
+                          </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -777,7 +874,7 @@ const PatientDetailView: React.FC<{ patient: Patient, onBack: () => void, onUpda
                                                     className={`p-3 rounded-xl text-xs leading-relaxed shadow-sm
                                                         ${isDoctor 
                                                             ? 'bg-primary text-white rounded-br-none' 
-                                                            : 'bg-slate-100 dark:bg-slate-850 border border-slate-205 dark:border-slate-750 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}
+                                                            : 'bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-bl-none'}`}
                                                 >
                                                     {m.text}
                                                 </div>
@@ -1043,7 +1140,13 @@ const App: React.FC = () => {
            darkMode={darkMode}
            onToggleDarkMode={() => setDarkMode(!darkMode)}
          />
-         {viewingImage && <AnalysisDetailModal image={viewingImage} onClose={() => setViewingImage(null)} />}
+         {viewingImage && (
+           <AnalysisDetailModal 
+             image={viewingImage} 
+             onClose={() => setViewingImage(null)} 
+             role="patient" 
+           />
+         )}
       </div>
     );
   }
@@ -1055,7 +1158,15 @@ const App: React.FC = () => {
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         {renderContent()}
       </main>
-       {viewingImage && <AnalysisDetailModal image={viewingImage} onClose={() => setViewingImage(null)} />}
+       {viewingImage && (
+         <AnalysisDetailModal 
+           image={viewingImage} 
+           onClose={() => setViewingImage(null)} 
+           role="practitioner" 
+           patient={selectedPatient || undefined} 
+           onUpdatePatient={handleUpdatePatient}
+         />
+       )}
     </div>
   );
 };

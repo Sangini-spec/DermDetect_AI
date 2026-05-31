@@ -57,6 +57,7 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [patientNotesInp, setPatientNotesInp] = useState('');
   
   // Selected scan for details modal
   const [viewingImage, setViewingImage] = useState<LesionImage | null>(null);
@@ -147,6 +148,40 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
       setIsAnnotating(false);
     } catch (err: any) {
       setUploadError(err.message || 'Error occurred while processing skin condition');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Patient direct upload (No AI scanning or annotation, analysisResult stays null)
+  const handlePatientUpload = async () => {
+    if (!selectedFile || !filePreview) return;
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const dataUrl = filePreview || (await fileToDataUrl(selectedFile));
+      const newLesion: LesionImage = {
+        id: `img_${Date.now()}`,
+        imageDataUrl: dataUrl,
+        file: selectedFile,
+        analysisResult: null, // Analysis and AI scanning pending doctor review
+        timestamp: new Date(),
+        patientNotes: patientNotesInp.trim() || undefined
+      };
+
+      const updatedPatient: Patient = {
+        ...patient,
+        lesionImages: [newLesion, ...(patient.lesionImages || [])]
+      };
+
+      onUpdatePatient(updatedPatient);
+      
+      // Reset state variables
+      setSelectedFile(null);
+      setFilePreview(null);
+      setPatientNotesInp('');
+    } catch (err: any) {
+      setUploadError(err.message || 'Error occurred while saving your upload');
     } finally {
       setIsUploading(false);
     }
@@ -343,34 +378,67 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                   Add high-resolution dermoscopy photos to analyze patterns, isolate suspect boundaries, and catalog lesion growth rate over time.
                 </p>
 
-                {isAnnotating && filePreview ? (
-                  <div className="animate-slide-up max-w-2xl mx-auto">
-                    <InteractiveCanvas 
-                      imageSrc={filePreview} 
-                      onConfirm={handleAnnotatedConfirm} 
-                      onCancel={() => {
-                        setSelectedFile(null);
-                        setFilePreview(null);
-                        setIsAnnotating(false);
-                      }}
-                      isProcessing={isUploading}
-                    />
-                    {isUploading && (
-                      <div className="mt-6 text-center space-y-3">
-                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
-                        <p className="text-sm text-indigo-500 font-bold animate-pulse font-mono uppercase tracking-wider">
-                          Analyzing structural vectors... Isolating annotated tissues...
-                        </p>
-                      </div>
-                    )}
+                {filePreview ? (
+                  <div className="animate-slide-up max-w-2xl mx-auto space-y-5 bg-[#fafbfd] dark:bg-slate-950/40 border border-slate-205 dark:border-slate-800/80 p-6 rounded-2xl">
+                    <div className="flex flex-col items-center">
+                      <p className="text-sm font-bold text-text-primary dark:text-white mb-3">Selected Lesion Image Preview</p>
+                      <img 
+                        src={filePreview} 
+                        alt="Selected lesion preview" 
+                        className="rounded-lg max-h-72 object-contain shadow-md border dark:border-slate-800" 
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                        Add Optional Comments or Symptoms Description
+                      </label>
+                      <textarea
+                        value={patientNotesInp}
+                        onChange={(e) => setPatientNotesInp(e.target.value)}
+                        placeholder="I noticed this skin spot a few weeks ago. It is slightly dry and has minor surface roughness..."
+                        rows={3}
+                        className="w-full text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-text-primary dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                      />
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
+                      <button
+                        onClick={() => {
+                          setSelectedFile(null);
+                          setFilePreview(null);
+                          setPatientNotesInp('');
+                          setIsAnnotating(false);
+                        }}
+                        disabled={isUploading}
+                        className="px-5 py-2.5 font-bold text-sm text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handlePatientUpload}
+                        disabled={isUploading}
+                        className="inline-flex items-center justify-center gap-2 px-6 py-2.5 font-bold text-sm text-white bg-primary hover:bg-primary-hover rounded-xl shadow-md transition-all disabled:opacity-50"
+                      >
+                        {isUploading ? (
+                          <>
+                            <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                            Uploading...
+                          </>
+                        ) : (
+                          'Confirm & Add Lesion'
+                        )}
+                      </button>
+                    </div>
+
                     {uploadError && (
-                      <div className="mt-4 p-4 text-xs font-semibold rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-center">
+                      <div className="p-4 text-xs font-semibold rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-center">
                         {uploadError}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-border dark:border-slate-800/80 hover:border-primary/50 rounded-2xl p-12 transition-all bg-[#fafbfd] dark:bg-slate-950/40 relative">
+                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-border dark:border-slate-800/80 hover:border-primary/50 rounded-2xl p-12 transition-all bg-[#fafbfd] dark:bg-slate-950/40 relative animate-fade-in">
                     <input 
                       type="file" 
                       id="patient-file-upload" 
@@ -384,8 +452,8 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                     <p className="text-base font-bold text-text-primary dark:text-white text-center">
                       Click area or drop files here to upload lesion scans
                     </p>
-                    <p className="text-xs text-text-secondary dark:text-slate-400 text-center mt-1">
-                      Direct photos are stored locally inside clinic memory vaults. Supports PNG, JPG, or WEBP files.
+                    <p className="text-xs text-text-secondary dark:text-slate-450 text-center mt-1">
+                      Direct photos are stored safely inside your clinical profiles. Supports PNG, JPG, or WEBP files.
                     </p>
                   </div>
                 )}
@@ -414,16 +482,21 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                         />
                         <div className="overflow-hidden flex-grow flex flex-col justify-between">
                           <div>
-                            <h4 className="font-bold text-sm text-text-primary dark:text-slate-100 truncate">
-                              {img.analysisResult?.conditionName || 'Analysis Completed'}
+                            <h4 className="font-bold text-sm text-text-primary dark:text-slate-100 truncate flex items-center gap-2">
+                              {img.analysisResult?.conditionName || 'Analysis Pending'}
                             </h4>
                             <p className="text-[10px] text-text-secondary dark:text-slate-450 mt-0.5">
                               {new Date(img.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </p>
                           </div>
-                          {img.analysisResult && (
+                          {img.analysisResult ? (
                             <span className="text-[10px] font-bold text-primary dark:text-blue-400 mt-2 tracking-wide block uppercase">
                               Confidence: {img.analysisResult.confidence}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[8.5px] font-extrabold text-amber-600 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-400/5 rounded-md mt-2 max-w-fit uppercase tracking-widest font-mono">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                              Under Review
                             </span>
                           )}
                         </div>
@@ -617,7 +690,7 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                           className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm
                             ${isMe 
                               ? 'bg-primary text-white rounded-br-none' 
-                              : 'bg-[#fafbfc] dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}
+                              : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-705 text-slate-800 dark:text-slate-100 rounded-bl-none'}`}
                         >
                           {msg.text}
                         </div>
@@ -657,7 +730,7 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
       </main>
 
       {/* Patient scans details preview modal inside Patient Dashboard */}
-      {viewingImage && viewingImage.analysisResult && (
+      {viewingImage && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in p-4">
           <div className="bg-background dark:bg-[#0f172a] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-slide-up border border-border/65 dark:border-slate-800">
             <div className="p-4 flex justify-between items-center border-b border-border dark:border-slate-800 sticky top-0 bg-background/90 dark:bg-[#0f172a]/95 backdrop-blur-sm z-10">
@@ -671,13 +744,38 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="flex flex-col items-center">
-                <img src={viewingImage.imageDataUrl} alt="Lesion condition view" className="rounded-lg w-full max-h-[380px] object-contain shadow-md border dark:border-slate-850" />
+                <img src={viewingImage.imageDataUrl} alt="Lesion condition view" className="rounded-lg w-full max-h-[380px] object-contain shadow-md border dark:border-slate-800" />
                 <p className="text-center text-xs text-text-secondary dark:text-slate-450 mt-3 font-mono">
                   Scan date: {new Date(viewingImage.timestamp).toLocaleString()}
                 </p>
               </div>
               <div>
-                <ResultCard result={viewingImage.analysisResult} />
+                {viewingImage.analysisResult ? (
+                  <ResultCard result={viewingImage.analysisResult} />
+                ) : (
+                  <div className="bg-[#fafbfc] dark:bg-slate-900 border border-slate-205 dark:border-slate-800 rounded-2xl p-6 text-center space-y-4">
+                    <div className="mx-auto h-12 w-12 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-500 animate-pulse">
+                      <Clock className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="font-extrabold text-base text-text-primary dark:text-white">Review & AI Scan Pending</h3>
+                      <p className="text-xs text-text-secondary dark:text-slate-400">
+                        Your uploaded photo is safely stored in your clinical archive.
+                      </p>
+                      <p className="text-xs text-text-secondary/80 dark:text-slate-400/80 leading-relaxed max-w-md mx-auto">
+                        Your clinical practitioner will inspect this lesion, add target boundaries/tags, and run precise dermoscopic AI scanning algorithms during your next consultation session.
+                      </p>
+                    </div>
+                    {viewingImage.patientNotes && (
+                      <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border border-border/80 text-left mt-4">
+                        <h4 className="text-[10px] font-bold text-slate-500 font-mono uppercase tracking-wider mb-1">Your uploaded comments:</h4>
+                        <p className="text-xs italic text-text-primary dark:text-slate-300 leading-relaxed">
+                          &ldquo;{viewingImage.patientNotes}&rdquo;
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

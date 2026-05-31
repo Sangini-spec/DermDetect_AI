@@ -24,13 +24,30 @@ const fileToBase64 = (file: File): Promise<string> => {
  * Calls proxy API route to analyze a single skin lesion image with optional coordinate tags or annotations
  */
 export const analyzeSkinCondition = async (
-  imageFile: File,
+  imageFile: File | string,
   boundingBox?: { x1: number; y1: number; x2: number; y2: number } | null,
   pins?: Array<{ x: number; y: number; label: string }>,
   practitionerNotes?: string
 ): Promise<AnalysisResult> => {
   try {
-    const base64Data = await fileToBase64(imageFile);
+    let base64Data = '';
+    let mimeType = 'image/jpeg';
+
+    if (typeof imageFile === 'string') {
+      if (imageFile.startsWith('data:')) {
+        const parts = imageFile.split(',');
+        base64Data = parts[1];
+        const mimePart = parts[0].match(/data:(.*?);/);
+        if (mimePart) {
+          mimeType = mimePart[1];
+        }
+      } else {
+        base64Data = imageFile;
+      }
+    } else {
+      base64Data = await fileToBase64(imageFile);
+      mimeType = imageFile.type;
+    }
 
     const response = await fetch("/api/analyze", {
       method: "POST",
@@ -40,7 +57,7 @@ export const analyzeSkinCondition = async (
       body: JSON.stringify({
         image: {
           data: base64Data,
-          mimeType: imageFile.type,
+          mimeType,
         },
         boundingBox,
         pins,
