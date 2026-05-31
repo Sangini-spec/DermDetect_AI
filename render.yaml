@@ -1,0 +1,15 @@
+services:
+  # DermDetect AI - Render Deployment Configuration
+  # This configures Render to deploy the application as a Node.js Web Service (Free Tier)
+  - type: web
+    name: dermdetect-ai
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false # User will provide this in the Render dashboard
+
